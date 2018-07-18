@@ -1,0 +1,138 @@
+[1mdiff --git a/app/controllers/tasks_controller.rb b/app/controllers/tasks_controller.rb[m
+[1mindex 69a4181..14b285d 100644[m
+[1m--- a/app/controllers/tasks_controller.rb[m
+[1m+++ b/app/controllers/tasks_controller.rb[m
+[36m@@ -1,10 +1,13 @@[m
+ class TasksController < ApplicationController[m
+[31m-    before_action :set_task, only: [:show, :edit, :update, :destroy][m
+[32m+[m[32m  before_action :require_user_logged_in[m
+[32m+[m[32m  before_action :correct_user, only: [:destroy][m
+[32m+[m
+   def index[m
+[31m-    @tasks = Task.all.page(params[:page]).per(3)[m
+[32m+[m[32m    @tasks = Task.all.page(params[:page])[m
+   end[m
+ [m
+   def show[m
+[32m+[m[32m    correct_user[m
+   end[m
+ [m
+   def new[m
+[36m@@ -12,23 +15,24 @@[m [mclass TasksController < ApplicationController[m
+   end[m
+ [m
+   def create[m
+[31m-    @task = Task.new(task_params)[m
+[31m-[m
+[32m+[m[32m    @task = current_user.tasks.build(task_params)[m
+     if @task.save[m
+[31m-      flash[:success] = 'Task が正常に投稿されました'[m
+[31m-      redirect_to @task[m
+[32m+[m[32m      flash[:success] = 'タスクを投稿しました。'[m
+[32m+[m[32m      redirect_to root_url[m
+     else[m
+[31m-      flash.now[:danger] = 'Task が投稿されませんでした'[m
+[31m-      render :new[m
+[32m+[m[32m      @tasks = current_user.tasks.order('created_at DESC').page(params[:page])[m
+[32m+[m[32m      flash.now[:danger] = 'タスクの投稿に失敗しました。'[m
+[32m+[m[32m      render 'tasks/index'[m
+     end[m
+   end[m
+ [m
+   def edit[m
+[32m+[m[32m    correct_user[m
+   end[m
+ [m
+   def update[m
+[31m-    @task = Task.find(params[:id])[m
+[31m-[m
+[32m+[m[32m    correct_user[m
+[32m+[m[41m    [m
+     if @task.update(task_params)[m
+       flash[:success] = 'Task は正常に更新されました'[m
+       redirect_to @task[m
+[36m@@ -39,20 +43,27 @@[m [mclass TasksController < ApplicationController[m
+   end[m
+ [m
+   def destroy[m
+[31m-    @task = Task.find(params[:id])[m
+[31m-    @task.destroy[m
+[31m-[m
+[31m-    flash[:success] = 'Task は正常に削除されました'[m
+[31m-    redirect_to tasks_url[m
+[31m-  end[m
+[31m-  [m
+[31m-    private[m
+[32m+[m[32m    correct_user[m
+     [m
+[31m-  def set_task[m
+[31m-    @task = Task.find(params[:id])[m
+[32m+[m[32m    if @task.destroy[m
+[32m+[m[32m      flash[:success] = 'Task は正常に削除されました'[m
+[32m+[m[32m      redirect_to @task[m
+[32m+[m[32m    else[m
+[32m+[m[32m      flash.now[:danger] = 'Task は削除されませんでした'[m
+[32m+[m[32m      render :edit[m
+[32m+[m[32m    end[m
+   end[m
+[32m+[m[41m  [m
+[32m+[m[32m  private[m
+ [m
+   def task_params[m
+     params.require(:task).permit(:content, :status)[m
+   end[m
+[32m+[m
+[32m+[m[32m  def correct_user[m
+[32m+[m[32m    @task = current_user.tasks.find_by(id: params[:id])[m
+[32m+[m[32m    unless @task[m
+[32m+[m[32m      redirect_to root_url[m
+[32m+[m[32m    end[m
+[32m+[m[32m  end[m
+ end[m
+\ No newline at end of file[m
+[1mdiff --git a/app/controllers/users_controller.rb b/app/controllers/users_controller.rb[m
+[1mindex 79ba0bc..b4552cc 100644[m
+[1m--- a/app/controllers/users_controller.rb[m
+[1m+++ b/app/controllers/users_controller.rb[m
+[36m@@ -30,4 +30,5 @@[m [mclass UsersController < ApplicationController[m
+   def user_params[m
+     params.require(:user).permit(:name, :email, :password, :password_confirmation)[m
+   end[m
+[32m+[m[41m  [m
+ end[m
+[1mdiff --git a/app/helpers/toppages_helper.rb b/app/helpers/toppages_helper.rb[m
+[1mdeleted file mode 100644[m
+[1mindex ae0f3d8..0000000[m
+[1m--- a/app/helpers/toppages_helper.rb[m
+[1m+++ /dev/null[m
+[36m@@ -1,2 +0,0 @@[m
+[31m-module ToppagesHelper[m
+[31m-end[m
+[1mdiff --git a/app/models/task.rb b/app/models/task.rb[m
+[1mindex b764894..9c5b72e 100644[m
+[1m--- a/app/models/task.rb[m
+[1m+++ b/app/models/task.rb[m
+[36m@@ -1,4 +1,7 @@[m
+ class Task < ApplicationRecord[m
+[31m-  validates :content, presence: true, length: { maximum: 10 }[m
+[31m-  validates :status, presence: true, length: { maximum: 10 }[m
+[31m-end[m
+[32m+[m[32m  belongs_to :user[m
+[32m+[m
+[32m+[m[32m  validates :user_id, presence: true[m
+[32m+[m[32m  validates :content, presence: true, length: { maximum: 255 }[m
+[32m+[m[32m  validates :status, presence: true, length: { maximum: 255 }[m
+[32m+[m[32mend[m
+\ No newline at end of file[m
+[1mdiff --git a/config/routes.rb b/config/routes.rb[m
+[1mindex 30df35b..2afd0b0 100644[m
+[1m--- a/config/routes.rb[m
+[1m+++ b/config/routes.rb[m
+[36m@@ -7,6 +7,5 @@[m [mRails.application.routes.draw do[m
+   [m
+   get 'signup', to: 'users#new'[m
+   resources :users[m
+[31m-  get 'signup', to: 'users#new'[m
+   resources :tasks[m
+ end[m
+\ No newline at end of file[m
